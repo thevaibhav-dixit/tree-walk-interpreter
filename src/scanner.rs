@@ -1,5 +1,3 @@
-use std::collections::*;
-
 use super::{Token, TokenType};
 
 pub struct Scanner {
@@ -11,7 +9,7 @@ pub struct Scanner {
 }
 
 impl Scanner {
-    fn new(source: String) -> Self {
+    pub fn new(source: String) -> Self {
         let source = source.chars().collect::<Vec<char>>();
         Self {
             source,
@@ -22,7 +20,7 @@ impl Scanner {
         }
     }
 
-    fn scan_tokens(&mut self) -> Vec<Token> {
+    pub fn scan_tokens(&mut self) -> Vec<Token> {
         while !self.is_at_end() {
             self.start = self.current;
             self.scan_token();

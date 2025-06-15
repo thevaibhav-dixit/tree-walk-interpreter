@@ -1,4 +1,4 @@
-use super::{Token, TokenType};
+use super::{Literal, Token, TokenType};
 
 pub struct Scanner {
     source: Vec<char>,
@@ -248,8 +248,13 @@ impl Scanner {
         let value = self.source[self.start + 1..self.current - 1]
             .iter()
             .collect::<String>();
-        self.tokens
-            .push(Token::new(TokenType::String, value, None, self.line));
+        let literal = Literal::String(value.clone());
+        self.tokens.push(Token::new(
+            TokenType::String,
+            value,
+            Some(literal),
+            self.line,
+        ));
     }
 
     fn peek_next(&self) -> char {
@@ -275,8 +280,12 @@ impl Scanner {
             .iter()
             .collect::<String>();
 
-        self.tokens
-            .push(Token::new(TokenType::Number, value, None, self.line));
+        self.tokens.push(Token::new(
+            TokenType::Number,
+            value.clone(),
+            Some(Literal::Number(value.parse().expect("should parse"))),
+            self.line,
+        ));
     }
 
     fn handle_identifier(&mut self) {

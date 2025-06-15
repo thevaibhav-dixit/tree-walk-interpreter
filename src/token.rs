@@ -16,6 +16,15 @@ pub enum Literal {
     Number(f64),
 }
 
+impl std::fmt::Display for Literal {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Literal::String(s) => write!(f, "{}", s),
+            Literal::Number(n) => write!(f, "{}", n),
+        }
+    }
+}
+
 impl Token {
     pub fn new(
         token_type: TokenType,

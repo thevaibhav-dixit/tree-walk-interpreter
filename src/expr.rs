@@ -83,7 +83,7 @@ impl Unary {
     }
 }
 
-mod ast_print {
+pub mod ast_print {
     use super::*;
 
     pub struct AstPrinter;

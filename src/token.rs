@@ -5,7 +5,7 @@ use super::TokenType;
 pub struct Token {
     pub token_type: TokenType,
     pub lexeme: String,
-    literal: Option<Literal>,
+    pub literal: Option<Literal>,
     line: usize,
 }
 

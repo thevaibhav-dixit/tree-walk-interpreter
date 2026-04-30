@@ -1,6 +1,5 @@
 use super::TokenType;
 
-#[allow(dead_code)]
 #[derive(Clone, Debug)]
 pub struct Token {
     pub token_type: TokenType,

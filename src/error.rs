@@ -10,4 +10,7 @@ pub enum LoxError {
         lexeme: String,
         message: String,
     },
+
+    #[error("[line {line}] Runtime error: {message}")]
+    RuntimeError { line: usize, message: String },
 }

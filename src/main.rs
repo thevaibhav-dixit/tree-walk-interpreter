@@ -1,17 +1,20 @@
 mod error;
 mod expr;
+mod interpreter;
 mod parser;
 mod scanner;
 mod token;
 mod token_type;
 
-use expr::*;
+use interpreter::*;
 use parser::*;
 use scanner::*;
 use token::*;
 use token_type::*;
 
 fn main() {
+    let interpreter = Interpreter;
+
     while let Some(input) = std::io::stdin().lines().next() {
         match input {
             Ok(line) => {
@@ -26,10 +29,10 @@ fn main() {
                 }
 
                 match Parser::new(tokens).parse() {
-                    Ok(expr) => {
-                        let printer = ast_print::AstPrinter;
-                        println!("{}", expr.accept(&printer));
-                    }
+                    Ok(expr) => match interpreter.interpret(&expr) {
+                        Ok(value) => println!("{}", value),
+                        Err(e) => eprintln!("{}", e),
+                    },
                     Err(e) => eprintln!("{}", e),
                 }
             }

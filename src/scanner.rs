@@ -1,8 +1,10 @@
 use super::{Literal, Token, TokenType};
+use crate::error::LoxError;
 
 pub struct Scanner {
     source: Vec<char>,
     tokens: Vec<Token>,
+    errors: Vec<LoxError>,
     start: usize,
     current: usize,
     line: usize,
@@ -14,13 +16,14 @@ impl Scanner {
         Self {
             source,
             tokens: Vec::new(),
+            errors: Vec::new(),
             start: 0,
             current: 0,
             line: 1,
         }
     }
 
-    pub fn scan_tokens(&mut self) -> Vec<Token> {
+    pub fn scan_tokens(mut self) -> (Vec<Token>, Vec<LoxError>) {
         while !self.is_at_end() {
             self.start = self.current;
             self.scan_token();
@@ -29,7 +32,7 @@ impl Scanner {
         self.tokens
             .push(Token::new(TokenType::Eof, String::new(), None, self.line));
 
-        self.tokens.clone()
+        (self.tokens, self.errors)
     }
 
     fn is_at_end(&self) -> bool {
@@ -188,7 +191,6 @@ impl Scanner {
 
             '/' => {
                 if self.match_next('/') {
-                    // for comment skip till end of line
                     while !self.is_at_end() && self.source[self.current] != '\n' {
                         self.advance();
                     }
@@ -201,9 +203,7 @@ impl Scanner {
                     ));
                 }
             }
-            ' ' | '\r' | '\t' => {
-                // Ignore whitespace
-            }
+            ' ' | '\r' | '\t' => {}
 
             '\n' => {
                 self.line += 1;
@@ -217,7 +217,10 @@ impl Scanner {
                 } else if c.is_ascii_alphabetic() {
                     self.handle_identifier();
                 } else {
-                    todo!("Unexpected character: '{}'", c);
+                    self.errors.push(LoxError::ScanError {
+                        line: self.line,
+                        message: format!("Unexpected character: '{}'", c),
+                    });
                 }
             }
         }
@@ -225,7 +228,7 @@ impl Scanner {
 
     fn peek(&self) -> char {
         if self.is_at_end() {
-            return '\0'; // Return null character if at end
+            return '\0';
         }
         self.source[self.current]
     }
@@ -239,12 +242,14 @@ impl Scanner {
         }
 
         if self.is_at_end() {
-            // Handle unterminated string error
-            eprintln!("Error: Unterminated string at line {}", self.line);
+            self.errors.push(LoxError::ScanError {
+                line: self.line,
+                message: String::from("Unterminated string"),
+            });
             return;
         }
 
-        self.advance(); // Consume the closing quote
+        self.advance(); // consume closing quote
         let value = self.source[self.start + 1..self.current - 1]
             .iter()
             .collect::<String>();
@@ -270,7 +275,7 @@ impl Scanner {
         }
 
         if self.peek() == '.' && self.peek_next().is_ascii_digit() {
-            self.advance(); // Consume the '.'
+            self.advance();
             while self.peek().is_ascii_digit() {
                 self.advance();
             }
@@ -280,10 +285,12 @@ impl Scanner {
             .iter()
             .collect::<String>();
 
+        // value is built entirely from ASCII digits and at most one '.', so parse cannot fail
+        let number = value.parse::<f64>().unwrap();
         self.tokens.push(Token::new(
             TokenType::Number,
-            value.clone(),
-            Some(Literal::Number(value.parse().expect("should parse"))),
+            value,
+            Some(Literal::Number(number)),
             self.line,
         ));
     }
@@ -298,74 +305,57 @@ impl Scanner {
             .collect::<String>();
 
         match value.as_str() {
-            "and" => {
-                self.tokens
-                    .push(Token::new(TokenType::And, value, None, self.line));
-            }
-            "class" => {
-                self.tokens
-                    .push(Token::new(TokenType::Class, value, None, self.line));
-            }
-            "else" => {
-                self.tokens
-                    .push(Token::new(TokenType::Else, value, None, self.line));
-            }
-            "false" => {
-                self.tokens
-                    .push(Token::new(TokenType::False, value, None, self.line));
-            }
-            "for" => {
-                self.tokens
-                    .push(Token::new(TokenType::For, value, None, self.line));
-            }
-            "fun" => {
-                self.tokens
-                    .push(Token::new(TokenType::Fun, value, None, self.line));
-            }
-            "if" => {
-                self.tokens
-                    .push(Token::new(TokenType::If, value, None, self.line));
-            }
-            "nil" => {
-                self.tokens
-                    .push(Token::new(TokenType::Nil, value, None, self.line));
-            }
-            "or" => {
-                self.tokens
-                    .push(Token::new(TokenType::Or, value, None, self.line));
-            }
-            "print" => {
-                self.tokens
-                    .push(Token::new(TokenType::Print, value, None, self.line));
-            }
-            "return" => {
-                self.tokens
-                    .push(Token::new(TokenType::Return, value, None, self.line));
-            }
-            "super" => {
-                self.tokens
-                    .push(Token::new(TokenType::Super, value, None, self.line));
-            }
-            "this" => {
-                self.tokens
-                    .push(Token::new(TokenType::This, value, None, self.line));
-            }
-            "true" => {
-                self.tokens
-                    .push(Token::new(TokenType::True, value, None, self.line));
-            }
-            "var" => {
-                self.tokens
-                    .push(Token::new(TokenType::Var, value, None, self.line));
-            }
-            "while" => {
-                self.tokens
-                    .push(Token::new(TokenType::While, value, None, self.line));
-            }
-            _ => {
-                self.tokens
-                    .push(Token::new(TokenType::Identifier, value, None, self.line));
-            }
+            "and" => self
+                .tokens
+                .push(Token::new(TokenType::And, value, None, self.line)),
+            "class" => self
+                .tokens
+                .push(Token::new(TokenType::Class, value, None, self.line)),
+            "else" => self
+                .tokens
+                .push(Token::new(TokenType::Else, value, None, self.line)),
+            "false" => self
+                .tokens
+                .push(Token::new(TokenType::False, value, None, self.line)),
+            "for" => self
+                .tokens
+                .push(Token::new(TokenType::For, value, None, self.line)),
+            "fun" => self
+                .tokens
+                .push(Token::new(TokenType::Fun, value, None, self.line)),
+            "if" => self
+                .tokens
+                .push(Token::new(TokenType::If, value, None, self.line)),
+            "nil" => self
+                .tokens
+                .push(Token::new(TokenType::Nil, value, None, self.line)),
+            "or" => self
+                .tokens
+                .push(Token::new(TokenType::Or, value, None, self.line)),
+            "print" => self
+                .tokens
+                .push(Token::new(TokenType::Print, value, None, self.line)),
+            "return" => self
+                .tokens
+                .push(Token::new(TokenType::Return, value, None, self.line)),
+            "super" => self
+                .tokens
+                .push(Token::new(TokenType::Super, value, None, self.line)),
+            "this" => self
+                .tokens
+                .push(Token::new(TokenType::This, value, None, self.line)),
+            "true" => self
+                .tokens
+                .push(Token::new(TokenType::True, value, None, self.line)),
+            "var" => self
+                .tokens
+                .push(Token::new(TokenType::Var, value, None, self.line)),
+            "while" => self
+                .tokens
+                .push(Token::new(TokenType::While, value, None, self.line)),
+            _ => self
+                .tokens
+                .push(Token::new(TokenType::Identifier, value, None, self.line)),
         }
     }
 }
@@ -377,21 +367,18 @@ mod tests {
     #[test]
     fn source_with_single_token() {
         let source = String::from("(");
-        let mut scanner = Scanner::new(source);
-        let tokens = scanner.scan_tokens();
+        let (tokens, errors) = Scanner::new(source).scan_tokens();
+        assert!(errors.is_empty());
         let expected_token = Token::new(TokenType::LeftParen, String::from("("), None, 1);
-
-        assert_eq!(tokens.len(), 2); // One token and one EOF
+        assert_eq!(tokens.len(), 2);
         assert_eq!(tokens[0].token_type, expected_token.token_type);
     }
 
     #[test]
     fn source_with_multiple_tokens() {
         let source = String::from("() <=");
-
-        let mut scanner = Scanner::new(source);
-
-        let tokens = scanner.scan_tokens();
+        let (tokens, errors) = Scanner::new(source).scan_tokens();
+        assert!(errors.is_empty());
 
         let expected_tokens = vec![
             Token::new(TokenType::LeftParen, String::from("("), None, 1),
@@ -408,8 +395,8 @@ mod tests {
     #[test]
     fn source_with_string_literal() {
         let source = String::from("\"Hello, World!\"");
-        let mut scanner = Scanner::new(source);
-        let tokens = scanner.scan_tokens();
+        let (tokens, errors) = Scanner::new(source).scan_tokens();
+        assert!(errors.is_empty());
         let expected_token = Token::new(TokenType::String, String::from("Hello, World!"), None, 1);
         assert_eq!(tokens[0].token_type, expected_token.token_type);
     }
@@ -417,8 +404,8 @@ mod tests {
     #[test]
     fn source_with_integer() {
         let source = String::from("12345");
-        let mut scanner = Scanner::new(source);
-        let tokens = scanner.scan_tokens();
+        let (tokens, errors) = Scanner::new(source).scan_tokens();
+        assert!(errors.is_empty());
         let expected = Token::new(TokenType::Number, String::from("12345"), None, 1);
         assert_eq!(tokens[0].token_type, expected.token_type);
     }
@@ -426,16 +413,17 @@ mod tests {
     #[test]
     fn source_with_float() {
         let source = String::from("123.45");
-        let mut scanner = Scanner::new(source);
-        let tokens = scanner.scan_tokens();
+        let (tokens, errors) = Scanner::new(source).scan_tokens();
+        assert!(errors.is_empty());
         let expected = Token::new(TokenType::Number, String::from("123.45"), None, 1);
         assert_eq!(tokens[0].token_type, expected.token_type);
     }
 
     #[test]
-    fn source_with_keyowrd_and_literal() {
+    fn source_with_keyword_and_literal() {
         let source = String::from("var x = 10;");
-        let mut scanner = Scanner::new(source);
+        let (tokens, errors) = Scanner::new(source).scan_tokens();
+        assert!(errors.is_empty());
 
         let expected = vec![
             Token::new(TokenType::Var, String::from("var"), None, 1),
@@ -446,8 +434,24 @@ mod tests {
             Token::new(TokenType::Eof, String::new(), None, 1),
         ];
 
-        for (i, token) in scanner.scan_tokens().iter().enumerate() {
+        for (i, token) in tokens.iter().enumerate() {
             assert_eq!(token.token_type, expected[i].token_type);
         }
+    }
+
+    #[test]
+    fn unexpected_character_produces_error() {
+        let source = String::from("@");
+        let (tokens, errors) = Scanner::new(source).scan_tokens();
+        assert_eq!(errors.len(), 1);
+        assert_eq!(tokens.len(), 1); // only EOF
+    }
+
+    #[test]
+    fn unterminated_string_produces_error() {
+        let source = String::from("\"hello");
+        let (tokens, errors) = Scanner::new(source).scan_tokens();
+        assert_eq!(errors.len(), 1);
+        assert_eq!(tokens.len(), 1); // only EOF
     }
 }

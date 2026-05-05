@@ -1,32 +1,24 @@
-use std::fmt;
-
 use crate::{
+    environment::Environment,
     error::LoxError,
     expr::{Binary, Expr, ExprVisitor, Grouping, LiteralExpr, Unary, Variable},
     stmt::{ExpressionStmt, PrintStmt, Stmt, StmtVisitor, VarStmt},
     token::{Literal, Token},
     token_type::TokenType,
+    value::Value,
 };
 
-pub enum Value {
-    Nil,
-    Bool(bool),
-    Number(f64),
-    String(String),
+pub struct Interpreter {
+    environment: Environment,
 }
 
-impl fmt::Display for Value {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match self {
-            Value::Nil => write!(f, "nil"),
-            Value::Bool(b) => write!(f, "{}", b),
-            Value::Number(n) => write!(f, "{}", n),
-            Value::String(s) => write!(f, "{}", s),
+impl Interpreter {
+    pub fn new() -> Self {
+        Self {
+            environment: Environment::new(),
         }
     }
 }
-
-pub struct Interpreter;
 
 fn is_equal(a: &Value, b: &Value) -> bool {
     match (a, b) {
@@ -92,8 +84,13 @@ impl StmtVisitor<Result<(), LoxError>> for Interpreter {
         Ok(())
     }
 
-    fn visit_var_stmt(&mut self, _stmt: &VarStmt) -> Result<(), LoxError> {
-        todo!("environment not yet implemented")
+    fn visit_var_stmt(&mut self, stmt: &VarStmt) -> Result<(), LoxError> {
+        let value = match &stmt.initializer {
+            Some(expr) => self.evaluate(expr)?,
+            None => Value::Nil,
+        };
+        self.environment.define(stmt.name.lexeme.clone(), value);
+        Ok(())
     }
 }
 
@@ -194,7 +191,7 @@ impl ExprVisitor<Result<Value, LoxError>> for Interpreter {
         }
     }
 
-    fn visit_variable_expr(&self, _expr: &Variable) -> Result<Value, LoxError> {
-        todo!("environment not yet implemented")
+    fn visit_variable_expr(&self, expr: &Variable) -> Result<Value, LoxError> {
+        self.environment.get(&expr.name)
     }
 }

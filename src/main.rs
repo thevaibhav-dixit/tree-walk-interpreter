@@ -1,3 +1,4 @@
+mod environment;
 mod error;
 mod expr;
 mod interpreter;
@@ -6,6 +7,7 @@ mod scanner;
 mod stmt;
 mod token;
 mod token_type;
+mod value;
 
 use interpreter::*;
 use parser::*;
@@ -14,7 +16,7 @@ use token::*;
 use token_type::*;
 
 fn main() {
-    let mut interpreter = Interpreter;
+    let mut interpreter = Interpreter::new();
 
     while let Some(input) = std::io::stdin().lines().next() {
         match input {

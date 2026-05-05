@@ -13,9 +13,30 @@ impl Parser {
     pub fn parse(&mut self) -> Result<Vec<Stmt>, LoxError> {
         let mut statements = Vec::new();
         while !self.is_at_end() {
-            statements.push(self.statement()?);
+            statements.push(self.declaration()?);
         }
         Ok(statements)
+    }
+
+    fn declaration(&mut self) -> Result<Stmt, LoxError> {
+        if (self.match_token(&[TokenType::Var])) {
+            return self.var_declaration();
+        }
+        self.statement()
+    }
+
+    fn var_declaration(&mut self) -> Result<Stmt, LoxError> {
+        let name = self.consume(TokenType::Identifier, "Expect variable name.")?;
+        let initializer = if self.match_token(&[TokenType::Equal]) {
+            Some(self.expression()?)
+        } else {
+            None
+        };
+        self.consume(
+            TokenType::Semicolon,
+            "Expect ';' after variable declaration.",
+        )?;
+        Ok(Stmt::Var(VarStmt { name, initializer }))
     }
 
     fn statement(&mut self) -> Result<Stmt, LoxError> {
@@ -162,6 +183,11 @@ impl Parser {
                 expression: Box::new(expr),
             }));
         }
+        if self.match_token(&[TokenType::Identifier]) {
+            return Ok(Expr::Variable(Variable {
+                name: self.previous().clone(),
+            }));
+        }
 
         Err(LoxError::ParseError {
             line: self.peek().line(),
@@ -180,10 +206,10 @@ impl Parser {
         false
     }
 
-    fn consume(&mut self, token_type: TokenType, message: &str) -> Result<(), LoxError> {
+    fn consume(&mut self, token_type: TokenType, message: &str) -> Result<Token, LoxError> {
         if self.check(&token_type) {
-            self.advance();
-            Ok(())
+            let res = self.advance();
+            Ok(res.clone())
         } else {
             Err(LoxError::ParseError {
                 line: self.peek().line(),

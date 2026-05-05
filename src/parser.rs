@@ -19,7 +19,7 @@ impl Parser {
     }
 
     fn declaration(&mut self) -> Result<Stmt, LoxError> {
-        if (self.match_token(&[TokenType::Var])) {
+        if self.match_token(&[TokenType::Var]) {
             return self.var_declaration();
         }
         self.statement()
@@ -59,7 +59,29 @@ impl Parser {
     }
 
     fn expression(&mut self) -> Result<Expr, LoxError> {
-        self.equality()
+        // self.equality()
+        self.assignment()
+    }
+
+    fn assignment(&mut self) -> Result<Expr, LoxError> {
+        let expr = self.equality()?;
+
+        if self.match_token(&[TokenType::Equal]) {
+            let value = self.assignment()?;
+            if let Expr::Variable(v) = expr {
+                return Ok(Expr::Assign(Assign {
+                    name: v.name,
+                    value: Box::new(value),
+                }));
+            }
+            return Err(LoxError::ParseError {
+                line: self.previous().line(),
+                lexeme: self.previous().lexeme.clone(),
+                message: String::from("Invalid assignment target."),
+            });
+        }
+
+        Ok(expr)
     }
 
     fn equality(&mut self) -> Result<Expr, LoxError> {

@@ -7,27 +7,36 @@ pub enum Expr {
     Grouping(Grouping),
     Literal(LiteralExpr),
     Unary(Unary),
+    Assign(Assign),
     Variable(Variable),
 }
 
 pub trait ExprVisitor<R> {
-    fn visit_binary_expr(&self, expr: &Binary) -> R;
-    fn visit_grouping_expr(&self, expr: &Grouping) -> R;
-    fn visit_literal_expr(&self, expr: &LiteralExpr) -> R;
-    fn visit_variable_expr(&self, expr: &Variable) -> R;
-    fn visit_unary_expr(&self, expr: &Unary) -> R;
+    fn visit_binary_expr(&mut self, expr: &Binary) -> R;
+    fn visit_grouping_expr(&mut self, expr: &Grouping) -> R;
+    fn visit_literal_expr(&mut self, expr: &LiteralExpr) -> R;
+    fn visit_variable_expr(&mut self, expr: &Variable) -> R;
+    fn visit_assign_expr(&mut self, expr: &Assign) -> R;
+    fn visit_unary_expr(&mut self, expr: &Unary) -> R;
 }
 
 impl Expr {
-    pub fn accept<R>(&self, visitor: &dyn ExprVisitor<R>) -> R {
+    pub fn accept<R>(&self, visitor: &mut dyn ExprVisitor<R>) -> R {
         match self {
             Expr::Binary(binary) => visitor.visit_binary_expr(binary),
             Expr::Grouping(grouping) => visitor.visit_grouping_expr(grouping),
             Expr::Literal(literal) => visitor.visit_literal_expr(literal),
             Expr::Unary(unary) => visitor.visit_unary_expr(unary),
             Expr::Variable(variable) => visitor.visit_variable_expr(variable),
+            Expr::Assign(assign) => visitor.visit_assign_expr(assign),
         }
     }
+}
+
+#[derive(Debug, Clone)]
+pub struct Assign {
+    pub name: Token,
+    pub value: Box<Expr>,
 }
 
 #[derive(Debug, Clone)]
@@ -97,7 +106,11 @@ pub mod ast_print {
     pub struct AstPrinter;
 
     impl ExprVisitor<String> for AstPrinter {
-        fn visit_binary_expr(&self, expr: &Binary) -> String {
+        fn visit_assign_expr(&mut self, expr: &Assign) -> String {
+            format!("(assign {} {})", expr.name.lexeme, expr.value.accept(self))
+        }
+
+        fn visit_binary_expr(&mut self, expr: &Binary) -> String {
             format!(
                 "({} {} {})",
                 expr.left.accept(self),
@@ -106,21 +119,22 @@ pub mod ast_print {
             )
         }
 
-        fn visit_grouping_expr(&self, expr: &Grouping) -> String {
+        fn visit_grouping_expr(&mut self, expr: &Grouping) -> String {
             format!("(group {})", expr.expression.accept(self))
         }
-        fn visit_literal_expr(&self, expr: &LiteralExpr) -> String {
+
+        fn visit_literal_expr(&mut self, expr: &LiteralExpr) -> String {
             match &expr.value {
                 Some(value) => value.to_string(),
                 None => "nil".to_string(),
             }
         }
 
-        fn visit_unary_expr(&self, expr: &Unary) -> String {
+        fn visit_unary_expr(&mut self, expr: &Unary) -> String {
             format!("({} {})", expr.operator.lexeme, expr.right.accept(self))
         }
 
-        fn visit_variable_expr(&self, expr: &Variable) -> String {
+        fn visit_variable_expr(&mut self, expr: &Variable) -> String {
             expr.name.lexeme.clone()
         }
     }
@@ -140,8 +154,8 @@ mod tests {
             LiteralExpr::new(Some(Literal::Number(1.0))),
         );
 
-        let printer = AstPrinter;
-        let result = expr.accept(&printer);
+        let mut printer = AstPrinter;
+        let result = expr.accept(&mut printer);
         assert_eq!(result, "(1 - 1)");
     }
 
@@ -156,8 +170,8 @@ mod tests {
             Grouping::new(LiteralExpr::new(Some(Literal::Number(45.67)))),
         );
 
-        let printer = AstPrinter;
-        let result = expr.accept(&printer);
+        let mut printer = AstPrinter;
+        let result = expr.accept(&mut printer);
         assert_eq!(result, "((- 123) * (group 45.67))");
     }
 }

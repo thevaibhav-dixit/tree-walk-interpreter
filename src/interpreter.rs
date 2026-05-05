@@ -1,7 +1,7 @@
 use crate::{
     environment::Environment,
     error::LoxError,
-    expr::{Binary, Expr, ExprVisitor, Grouping, LiteralExpr, Unary, Variable},
+    expr::{Assign, Binary, Expr, ExprVisitor, Grouping, LiteralExpr, Unary, Variable},
     stmt::{ExpressionStmt, PrintStmt, Stmt, StmtVisitor, VarStmt},
     token::{Literal, Token},
     token_type::TokenType,
@@ -67,7 +67,7 @@ impl Interpreter {
         Ok(())
     }
 
-    fn evaluate(&self, expr: &Expr) -> Result<Value, LoxError> {
+    fn evaluate(&mut self, expr: &Expr) -> Result<Value, LoxError> {
         expr.accept(self)
     }
 }
@@ -95,7 +95,13 @@ impl StmtVisitor<Result<(), LoxError>> for Interpreter {
 }
 
 impl ExprVisitor<Result<Value, LoxError>> for Interpreter {
-    fn visit_literal_expr(&self, expr: &LiteralExpr) -> Result<Value, LoxError> {
+    fn visit_assign_expr(&mut self, expr: &Assign) -> Result<Value, LoxError> {
+        let value = self.evaluate(&expr.value)?;
+        self.environment.assign(&expr.name, value.clone())?;
+        Ok(value)
+    }
+
+    fn visit_literal_expr(&mut self, expr: &LiteralExpr) -> Result<Value, LoxError> {
         match &expr.value {
             None => Ok(Value::Nil),
             Some(Literal::Number(n)) => Ok(Value::Number(*n)),
@@ -103,11 +109,11 @@ impl ExprVisitor<Result<Value, LoxError>> for Interpreter {
         }
     }
 
-    fn visit_grouping_expr(&self, expr: &Grouping) -> Result<Value, LoxError> {
+    fn visit_grouping_expr(&mut self, expr: &Grouping) -> Result<Value, LoxError> {
         self.evaluate(&expr.expression)
     }
 
-    fn visit_unary_expr(&self, expr: &Unary) -> Result<Value, LoxError> {
+    fn visit_unary_expr(&mut self, expr: &Unary) -> Result<Value, LoxError> {
         let right = self.evaluate(&expr.right)?;
 
         match expr.operator.token_type {
@@ -123,7 +129,7 @@ impl ExprVisitor<Result<Value, LoxError>> for Interpreter {
         }
     }
 
-    fn visit_binary_expr(&self, expr: &Binary) -> Result<Value, LoxError> {
+    fn visit_binary_expr(&mut self, expr: &Binary) -> Result<Value, LoxError> {
         let left = self.evaluate(&expr.left)?;
         let right = self.evaluate(&expr.right)?;
 
@@ -191,7 +197,7 @@ impl ExprVisitor<Result<Value, LoxError>> for Interpreter {
         }
     }
 
-    fn visit_variable_expr(&self, expr: &Variable) -> Result<Value, LoxError> {
+    fn visit_variable_expr(&mut self, expr: &Variable) -> Result<Value, LoxError> {
         self.environment.get(&expr.name)
     }
 }

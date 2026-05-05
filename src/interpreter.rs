@@ -3,6 +3,7 @@ use std::fmt;
 use crate::{
     error::LoxError,
     expr::{Binary, Expr, ExprVisitor, Grouping, LiteralExpr, Unary},
+    stmt::{ExpressionStmt, PrintStmt, Stmt, StmtVisitor},
     token::{Literal, Token},
     token_type::TokenType,
 };
@@ -67,12 +68,28 @@ fn check_number_operands(operator: &Token, left: &Value, right: &Value) -> Resul
 }
 
 impl Interpreter {
-    pub fn interpret(&self, expr: &Expr) -> Result<Value, LoxError> {
-        self.evaluate(expr)
+    pub fn interpret(&mut self, statements: &[Stmt]) -> Result<(), LoxError> {
+        for stmt in statements {
+            stmt.accept(self)?;
+        }
+        Ok(())
     }
 
     fn evaluate(&self, expr: &Expr) -> Result<Value, LoxError> {
         expr.accept(self)
+    }
+}
+
+impl StmtVisitor<Result<(), LoxError>> for Interpreter {
+    fn visit_expression_stmt(&mut self, stmt: &ExpressionStmt) -> Result<(), LoxError> {
+        self.evaluate(&stmt.expression)?;
+        Ok(())
+    }
+
+    fn visit_print_stmt(&mut self, stmt: &PrintStmt) -> Result<(), LoxError> {
+        let value = self.evaluate(&stmt.expression)?;
+        println!("{}", value);
+        Ok(())
     }
 }
 

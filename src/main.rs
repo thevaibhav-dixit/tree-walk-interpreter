@@ -3,6 +3,7 @@ mod expr;
 mod interpreter;
 mod parser;
 mod scanner;
+mod stmt;
 mod token;
 mod token_type;
 
@@ -13,7 +14,7 @@ use token::*;
 use token_type::*;
 
 fn main() {
-    let interpreter = Interpreter;
+    let mut interpreter = Interpreter;
 
     while let Some(input) = std::io::stdin().lines().next() {
         match input {
@@ -29,10 +30,11 @@ fn main() {
                 }
 
                 match Parser::new(tokens).parse() {
-                    Ok(expr) => match interpreter.interpret(&expr) {
-                        Ok(value) => println!("{}", value),
-                        Err(e) => eprintln!("{}", e),
-                    },
+                    Ok(stmts) => {
+                        if let Err(e) = interpreter.interpret(&stmts) {
+                            eprintln!("{}", e);
+                        }
+                    }
                     Err(e) => eprintln!("{}", e),
                 }
             }

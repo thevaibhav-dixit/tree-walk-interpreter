@@ -40,10 +40,22 @@ impl Parser {
     }
 
     fn statement(&mut self) -> Result<Stmt, LoxError> {
+        if self.match_token(&[TokenType::LeftBrace]) {
+            return Ok(Stmt::Block(BlockStmt { statements: self.block()? }));
+        }
         if self.match_token(&[TokenType::Print]) {
             return self.print_statement();
         }
         self.expression_statement()
+    }
+
+    fn block(&mut self) -> Result<Vec<Stmt>, LoxError> {
+        let mut statements = Vec::new();
+        while !self.check(&TokenType::RightBrace) && !self.is_at_end() {
+            statements.push(self.declaration()?);
+        }
+        self.consume(TokenType::RightBrace, "Expect '}' after block.")?;
+        Ok(statements)
     }
 
     fn print_statement(&mut self) -> Result<Stmt, LoxError> {
@@ -59,7 +71,6 @@ impl Parser {
     }
 
     fn expression(&mut self) -> Result<Expr, LoxError> {
-        // self.equality()
         self.assignment()
     }
 

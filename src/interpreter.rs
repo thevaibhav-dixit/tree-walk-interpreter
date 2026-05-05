@@ -2,7 +2,7 @@ use crate::{
     environment::Environment,
     error::LoxError,
     expr::{Assign, Binary, Expr, ExprVisitor, Grouping, LiteralExpr, Unary, Variable},
-    stmt::{ExpressionStmt, PrintStmt, Stmt, StmtVisitor, VarStmt},
+    stmt::{BlockStmt, ExpressionStmt, PrintStmt, Stmt, StmtVisitor, VarStmt},
     token::{Literal, Token},
     token_type::TokenType,
     value::Value,
@@ -73,6 +73,18 @@ impl Interpreter {
 }
 
 impl StmtVisitor<Result<(), LoxError>> for Interpreter {
+    fn visit_block_stmt(&mut self, stmt: &BlockStmt) -> Result<(), LoxError> {
+        let previous = std::mem::replace(&mut self.environment, Environment::new());
+        self.environment = Environment::new_enclosed(previous);
+
+        let result: Result<(), LoxError> = stmt.statements.iter().try_for_each(|s| s.accept(self));
+
+        let block_env = std::mem::replace(&mut self.environment, Environment::new());
+        self.environment = block_env.take_enclosing().expect("block env must have enclosing");
+
+        result
+    }
+
     fn visit_expression_stmt(&mut self, stmt: &ExpressionStmt) -> Result<(), LoxError> {
         self.evaluate(&stmt.expression)?;
         Ok(())

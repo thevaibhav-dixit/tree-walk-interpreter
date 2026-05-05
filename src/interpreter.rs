@@ -2,8 +2,8 @@ use std::fmt;
 
 use crate::{
     error::LoxError,
-    expr::{Binary, Expr, ExprVisitor, Grouping, LiteralExpr, Unary},
-    stmt::{ExpressionStmt, PrintStmt, Stmt, StmtVisitor},
+    expr::{Binary, Expr, ExprVisitor, Grouping, LiteralExpr, Unary, Variable},
+    stmt::{ExpressionStmt, PrintStmt, Stmt, StmtVisitor, VarStmt},
     token::{Literal, Token},
     token_type::TokenType,
 };
@@ -90,6 +90,10 @@ impl StmtVisitor<Result<(), LoxError>> for Interpreter {
         let value = self.evaluate(&stmt.expression)?;
         println!("{}", value);
         Ok(())
+    }
+
+    fn visit_var_stmt(&mut self, _stmt: &VarStmt) -> Result<(), LoxError> {
+        todo!("environment not yet implemented")
     }
 }
 
@@ -188,5 +192,9 @@ impl ExprVisitor<Result<Value, LoxError>> for Interpreter {
             TokenType::EqualEqual => Ok(Value::Bool(is_equal(&left, &right))),
             _ => unreachable!(),
         }
+    }
+
+    fn visit_variable_expr(&self, _expr: &Variable) -> Result<Value, LoxError> {
+        todo!("environment not yet implemented")
     }
 }

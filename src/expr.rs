@@ -7,12 +7,14 @@ pub enum Expr {
     Grouping(Grouping),
     Literal(LiteralExpr),
     Unary(Unary),
+    Variable(Variable),
 }
 
 pub trait ExprVisitor<R> {
     fn visit_binary_expr(&self, expr: &Binary) -> R;
     fn visit_grouping_expr(&self, expr: &Grouping) -> R;
     fn visit_literal_expr(&self, expr: &LiteralExpr) -> R;
+    fn visit_variable_expr(&self, expr: &Variable) -> R;
     fn visit_unary_expr(&self, expr: &Unary) -> R;
 }
 
@@ -23,6 +25,7 @@ impl Expr {
             Expr::Grouping(grouping) => visitor.visit_grouping_expr(grouping),
             Expr::Literal(literal) => visitor.visit_literal_expr(literal),
             Expr::Unary(unary) => visitor.visit_unary_expr(unary),
+            Expr::Variable(variable) => visitor.visit_variable_expr(variable),
         }
     }
 }
@@ -83,6 +86,11 @@ impl Unary {
     }
 }
 
+#[derive(Debug, Clone)]
+pub struct Variable {
+    pub name: Token,
+}
+
 pub mod ast_print {
     use super::*;
 
@@ -110,6 +118,10 @@ pub mod ast_print {
 
         fn visit_unary_expr(&self, expr: &Unary) -> String {
             format!("({} {})", expr.operator.lexeme, expr.right.accept(self))
+        }
+
+        fn visit_variable_expr(&self, expr: &Variable) -> String {
+            expr.name.lexeme.clone()
         }
     }
 }

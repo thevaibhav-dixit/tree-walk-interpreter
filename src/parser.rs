@@ -51,6 +51,9 @@ impl Parser {
         if self.match_token(&[TokenType::If]) {
             return self.if_statement();
         }
+        if self.match_token(&[TokenType::While]) {
+            return self.while_statement();
+        }
         self.expression_statement()
     }
 
@@ -86,6 +89,14 @@ impl Parser {
             then_branch,
             else_branch,
         }))
+    }
+
+    fn while_statement(&mut self) -> Result<Stmt, LoxError> {
+        self.consume(TokenType::LeftParen, "Expect '(' after 'while'.")?;
+        let condition = self.expression()?;
+        self.consume(TokenType::RightParen, "Expect ')' after condition.")?;
+        let body = Box::new(self.statement()?);
+        Ok(Stmt::While(WhileStmt { condition, body }))
     }
 
     fn expression_statement(&mut self) -> Result<Stmt, LoxError> {
@@ -125,7 +136,11 @@ impl Parser {
         while self.match_token(&[TokenType::Or]) {
             let operator = self.previous().clone();
             let right = self.and()?;
-            expr = Expr::Logical(Logical { left: Box::new(expr), operator, right: Box::new(right) });
+            expr = Expr::Logical(Logical {
+                left: Box::new(expr),
+                operator,
+                right: Box::new(right),
+            });
         }
 
         Ok(expr)
@@ -137,7 +152,11 @@ impl Parser {
         while self.match_token(&[TokenType::And]) {
             let operator = self.previous().clone();
             let right = self.equality()?;
-            expr = Expr::Logical(Logical { left: Box::new(expr), operator, right: Box::new(right) });
+            expr = Expr::Logical(Logical {
+                left: Box::new(expr),
+                operator,
+                right: Box::new(right),
+            });
         }
 
         Ok(expr)

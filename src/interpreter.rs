@@ -2,7 +2,7 @@ use crate::{
     environment::Environment,
     error::LoxError,
     expr::{Assign, Binary, Expr, ExprVisitor, Grouping, LiteralExpr, Logical, Unary, Variable},
-    stmt::{BlockStmt, ExpressionStmt, PrintStmt, Stmt, StmtVisitor, VarStmt},
+    stmt::{BlockStmt, ExpressionStmt, IfStmt, PrintStmt, Stmt, StmtVisitor, VarStmt, WhileStmt},
     token::{Literal, Token},
     token_type::TokenType,
     value::Value,
@@ -99,15 +99,17 @@ impl StmtVisitor<Result<(), LoxError>> for Interpreter {
     }
 
     fn visit_var_stmt(&mut self, stmt: &VarStmt) -> Result<(), LoxError> {
-        let value = match &stmt.initializer {
-            Some(expr) => self.evaluate(expr)?,
-            None => Value::Nil,
+        let value = if let Some(val) = &stmt.initializer {
+            self.evaluate(val)?
+        } else {
+            Value::Nil
         };
+
         self.environment.define(stmt.name.lexeme.clone(), value);
         Ok(())
     }
 
-    fn visit_if_stmt(&mut self, stmt: &crate::stmt::IfStmt) -> Result<(), LoxError> {
+    fn visit_if_stmt(&mut self, stmt: &IfStmt) -> Result<(), LoxError> {
         let condition = self.evaluate(&stmt.condition)?;
         if is_truthy(&condition) {
             stmt.then_branch.accept(self)
@@ -116,6 +118,13 @@ impl StmtVisitor<Result<(), LoxError>> for Interpreter {
         } else {
             Ok(())
         }
+    }
+
+    fn visit_while_stmt(&mut self, stmt: &WhileStmt) -> Result<(), LoxError> {
+        while is_truthy(&self.evaluate(&stmt.condition)?) {
+            stmt.body.accept(self)?;
+        }
+        Ok(())
     }
 }
 
@@ -127,10 +136,13 @@ impl ExprVisitor<Result<Value, LoxError>> for Interpreter {
     }
 
     fn visit_literal_expr(&mut self, expr: &LiteralExpr) -> Result<Value, LoxError> {
-        match &expr.value {
-            None => Ok(Value::Nil),
-            Some(Literal::Number(n)) => Ok(Value::Number(*n)),
-            Some(Literal::String(s)) => Ok(Value::String(s.clone())),
+        if let Some(literal) = &expr.value {
+            match literal {
+                Literal::Number(n) => Ok(Value::Number(*n)),
+                Literal::String(s) => Ok(Value::String(s.clone())),
+            }
+        } else {
+            Ok(Value::Nil)
         }
     }
 

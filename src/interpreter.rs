@@ -1,7 +1,7 @@
 use crate::{
     environment::Environment,
     error::LoxError,
-    expr::{Assign, Binary, Expr, ExprVisitor, Grouping, LiteralExpr, Unary, Variable},
+    expr::{Assign, Binary, Expr, ExprVisitor, Grouping, LiteralExpr, Logical, Unary, Variable},
     stmt::{BlockStmt, ExpressionStmt, PrintStmt, Stmt, StmtVisitor, VarStmt},
     token::{Literal, Token},
     token_type::TokenType,
@@ -80,7 +80,9 @@ impl StmtVisitor<Result<(), LoxError>> for Interpreter {
         let result: Result<(), LoxError> = stmt.statements.iter().try_for_each(|s| s.accept(self));
 
         let block_env = std::mem::replace(&mut self.environment, Environment::new());
-        self.environment = block_env.take_enclosing().expect("block env must have enclosing");
+        self.environment = block_env
+            .take_enclosing()
+            .expect("block env must have enclosing");
 
         result
     }
@@ -103,6 +105,17 @@ impl StmtVisitor<Result<(), LoxError>> for Interpreter {
         };
         self.environment.define(stmt.name.lexeme.clone(), value);
         Ok(())
+    }
+
+    fn visit_if_stmt(&mut self, stmt: &crate::stmt::IfStmt) -> Result<(), LoxError> {
+        let condition = self.evaluate(&stmt.condition)?;
+        if is_truthy(&condition) {
+            stmt.then_branch.accept(self)
+        } else if let Some(else_branch) = &stmt.else_branch {
+            else_branch.accept(self)
+        } else {
+            Ok(())
+        }
     }
 }
 
@@ -211,5 +224,24 @@ impl ExprVisitor<Result<Value, LoxError>> for Interpreter {
 
     fn visit_variable_expr(&mut self, expr: &Variable) -> Result<Value, LoxError> {
         self.environment.get(&expr.name)
+    }
+
+    fn visit_logical_expr(&mut self, expr: &Logical) -> Result<Value, LoxError> {
+        let left = self.evaluate(&expr.left)?;
+
+        match expr.operator.token_type {
+            TokenType::Or => {
+                if is_truthy(&left) {
+                    return Ok(left);
+                }
+            }
+            _ => {
+                if !is_truthy(&left) {
+                    return Ok(left);
+                }
+            }
+        }
+
+        self.evaluate(&expr.right)
     }
 }

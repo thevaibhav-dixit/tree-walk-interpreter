@@ -9,6 +9,7 @@ pub enum Expr {
     Unary(Unary),
     Assign(Assign),
     Variable(Variable),
+    Logical(Logical),
 }
 
 pub trait ExprVisitor<R> {
@@ -18,6 +19,7 @@ pub trait ExprVisitor<R> {
     fn visit_variable_expr(&mut self, expr: &Variable) -> R;
     fn visit_assign_expr(&mut self, expr: &Assign) -> R;
     fn visit_unary_expr(&mut self, expr: &Unary) -> R;
+    fn visit_logical_expr(&mut self, expr: &Logical) -> R;
 }
 
 impl Expr {
@@ -29,8 +31,16 @@ impl Expr {
             Expr::Unary(unary) => visitor.visit_unary_expr(unary),
             Expr::Variable(variable) => visitor.visit_variable_expr(variable),
             Expr::Assign(assign) => visitor.visit_assign_expr(assign),
+            Expr::Logical(logical) => visitor.visit_logical_expr(logical),
         }
     }
+}
+
+#[derive(Debug, Clone)]
+pub struct Logical {
+    pub left: Box<Expr>,
+    pub operator: Token,
+    pub right: Box<Expr>,
 }
 
 #[derive(Debug, Clone)]
@@ -136,6 +146,10 @@ pub mod ast_print {
 
         fn visit_variable_expr(&mut self, expr: &Variable) -> String {
             expr.name.lexeme.clone()
+        }
+
+        fn visit_logical_expr(&mut self, expr: &Logical) -> String {
+            format!("({} {} {})", expr.operator.lexeme, expr.left.accept(self), expr.right.accept(self))
         }
     }
 }

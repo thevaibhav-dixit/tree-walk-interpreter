@@ -137,7 +137,7 @@ impl Parser {
         }
 
         let condition = condition.unwrap_or(Expr::Literal(LiteralExpr {
-            value: Some(Literal::String("true".to_string())),
+            value: Some(Literal::Bool(true)),
         }));
 
         body = Stmt::While(WhileStmt {
@@ -302,12 +302,12 @@ impl Parser {
     fn primary(&mut self) -> Result<Expr, LoxError> {
         if self.match_token(&[TokenType::False]) {
             return Ok(Expr::Literal(LiteralExpr {
-                value: Some(Literal::String("false".to_string())),
+                value: Some(Literal::Bool(false)),
             }));
         }
         if self.match_token(&[TokenType::True]) {
             return Ok(Expr::Literal(LiteralExpr {
-                value: Some(Literal::String("true".to_string())),
+                value: Some(Literal::Bool(true)),
             }));
         }
         if self.match_token(&[TokenType::Nil]) {

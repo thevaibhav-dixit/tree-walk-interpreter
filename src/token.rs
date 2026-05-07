@@ -13,6 +13,7 @@ pub struct Token {
 pub enum Literal {
     String(String),
     Number(f64),
+    Bool(bool),
 }
 
 impl std::fmt::Display for Literal {
@@ -20,6 +21,7 @@ impl std::fmt::Display for Literal {
         match self {
             Literal::String(s) => write!(f, "{}", s),
             Literal::Number(n) => write!(f, "{}", n),
+            Literal::Bool(b) => write!(f, "{}", b),
         }
     }
 }

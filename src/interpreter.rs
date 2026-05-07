@@ -140,6 +140,7 @@ impl ExprVisitor<Result<Value, LoxError>> for Interpreter {
             match literal {
                 Literal::Number(n) => Ok(Value::Number(*n)),
                 Literal::String(s) => Ok(Value::String(s.clone())),
+                Literal::Bool(b) => Ok(Value::Bool(*b)),
             }
         } else {
             Ok(Value::Nil)
